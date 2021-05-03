@@ -9,6 +9,9 @@
     <extensions defaultExtensionNs="com.intellij">
         <externalAnnotator language="kotlin" implementationClass="com.nbadal.ktlint.KtlintAnnotator"/>
         <postFormatProcessor implementation="com.nbadal.ktlint.KtlintPostFormatProcessor" />
+        <localInspection implementationClass="com.nbadal.ktlint.inspections.KtlintInspection"
+                         groupBundle="strings" groupKey="inspectionGroupName"
+                         groupPath="Kotlin" displayName="Ktlint Errors" />
         <projectService serviceImplementation="com.nbadal.ktlint.KtlintConfigStorage"/>
         <projectConfigurable groupId="tools" displayName="ktlint" id="preferences.ktlint"
                              instance="com.nbadal.ktlint.KtlintConfig"/>

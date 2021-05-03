@@ -4,9 +4,9 @@ import com.intellij.codeInsight.intention.impl.BaseIntentionAction
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiComment
-import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiWhiteSpace
+import com.nbadal.ktlint.errorElement
 import com.pinterest.ktlint.core.LintError
 import org.jetbrains.kotlin.lexer.KtTokens.EOL_COMMENT
 import org.jetbrains.kotlin.psi.KtPsiFactory
@@ -56,16 +56,9 @@ class LineDisableIntention(private val error: LintError) : BaseIntentionAction()
         "final-newline", // No way to disable using comment, since it's the last character
     )
 
-    /** @return the element specified by the error */
-    private fun PsiFile.errorElement(): PsiElement? =
-        viewProvider.document?.let { doc ->
-            if (error.line >= doc.lineCount) return null
-            return findElementAt(doc.getLineStartOffset(error.line - 1) + error.col - 1)
-        }
-
     /** @return the EOL whitespace after this error, if found */
     private fun PsiFile.errorEol(): PsiWhiteSpace? =
-        errorElement()?.let { err ->
+        errorElement(error)?.let { err ->
             err.nextLeaf { it is PsiWhiteSpace && it.textContains('\n') } as PsiWhiteSpace?
         }
 
