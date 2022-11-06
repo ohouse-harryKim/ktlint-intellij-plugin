@@ -4,6 +4,8 @@ import com.intellij.psi.FileViewProvider
 import com.intellij.psi.PsiFile
 import com.pinterest.ktlint.core.LintError
 import com.pinterest.ktlint.core.ParseException
+import com.pinterest.ktlint.core.Rule
+import com.pinterest.ktlint.core.RuleProvider
 import io.mockk.every
 import io.mockk.junit5.MockKExtension
 import io.mockk.mockk
@@ -24,7 +26,7 @@ internal class KtlintProcessingTest {
         every { KtLintWrapper.trimMemory() } answers { /* stub */ }
 
         mockkObject(KtlintRules)
-        every { KtlintRules.find(any(), any(), any()) } returns emptyList()
+        every { KtlintRules.rulesets(any(), any()) } returns mapOf("rules" to setOf(mockRuleProvider()))
     }
 
     @Test
@@ -36,6 +38,8 @@ internal class KtlintProcessingTest {
         assertEquals(emptyList<LintError>(), result.uncorrectedErrors)
         assertEquals(emptyList<LintError>(), result.correctedErrors)
     }
+
+    private fun mockRuleProvider() = RuleProvider { Rule("mock") }
 
     private fun mockFile() = mockk<PsiFile>(relaxed = true).apply {
         every { viewProvider } returns mockk<FileViewProvider>().apply {

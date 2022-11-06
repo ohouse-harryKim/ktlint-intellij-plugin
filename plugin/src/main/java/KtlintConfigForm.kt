@@ -8,7 +8,7 @@ import com.intellij.ui.TextFieldWithAutoCompletion
 import com.intellij.uiDesigner.core.GridConstraints
 import com.nbadal.ktlint.KtlintConfigStorage
 import com.nbadal.ktlint.KtlintRules
-import com.pinterest.ktlint.core.RuleSet
+import com.pinterest.ktlint.core.RuleProvider
 import java.awt.Desktop
 import java.awt.Dimension
 import java.net.URI
@@ -54,16 +54,15 @@ class KtlintConfigForm(private val project: Project, private val config: KtlintC
         // Stub.
     }
 
-    private fun RuleSet.ruleIds() = rules.map { rule -> if (id == "standard") rule.id else "$id:${rule.id}" }
+    private fun Map<String, Set<RuleProvider>>.ruleIds() = entries.flatMap { (rulesetId, providers) ->
+        providers
+            .map { it.createNewRuleInstance() }
+            .map { if (rulesetId == "standard") it.id else "$rulesetId:${it.id}" }
+    }.distinct()
 
     fun createComponent(): JComponent {
         // Manually create and insert disabled rules field
-        val rules = try {
-            KtlintRules.find(config.externalJarPaths, config.useExperimental, false)
-        } catch (ruleErr: Throwable) {
-            // UI for rule issues?
-            KtlintRules.find(config.externalJarPaths, config.useExperimental, true)
-        }.flatMap { it.ruleIds() }
+        val rules = KtlintRules.rulesets(config.externalJarPaths, config.useExperimental).ruleIds()
 
         disabledRules = TextFieldWithAutoCompletion.create(project, rules, false, "")
         disabledRules.toolTipText = ResourceBundle.getBundle("strings").getString("disabledRulesToolTip")
@@ -90,7 +89,7 @@ class KtlintConfigForm(private val project: Project, private val config: KtlintC
             disabledRules,
             externalJarPaths,
             baselinePath,
-            editorConfigPath,
+            editorConfigPath
         )
         enableKtlint.addChangeListener { fieldsToDisable.forEach { it.isEnabled = enableKtlint.isSelected } }
 

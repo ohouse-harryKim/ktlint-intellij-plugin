@@ -8,7 +8,7 @@ import com.pinterest.ktlint.core.KtLint
 import com.pinterest.ktlint.core.LintError
 import com.pinterest.ktlint.core.ParseException
 import com.pinterest.ktlint.core.api.DefaultEditorConfigProperties.codeStyleSetProperty
-import com.pinterest.ktlint.core.api.DefaultEditorConfigProperties.disabledRulesProperty
+import com.pinterest.ktlint.core.api.DefaultEditorConfigProperties.ktlintDisabledRulesProperty
 import com.pinterest.ktlint.core.api.EditorConfigOverride
 import com.pinterest.ktlint.core.api.EditorConfigOverride.Companion.plus
 import com.pinterest.ktlint.internal.containsLintError
@@ -20,9 +20,10 @@ internal fun doLint(
     config: KtlintConfigStorage,
     format: Boolean
 ): LintResult {
-    val editorConfigOverride = EditorConfigOverride.emptyEditorConfigOverride
+    val editorConfigOverride = EditorConfigOverride
+        .emptyEditorConfigOverride
         .applyIf(config.disabledRules.isNotEmpty()) {
-            plus(disabledRulesProperty to config.disabledRules.joinToString(","))
+            plus(ktlintDisabledRulesProperty to config.disabledRules.joinToString(","))
         }
         .applyIf(config.androidMode) {
             plus(codeStyleSetProperty to "android")
@@ -52,16 +53,18 @@ internal fun doLint(
     val ignoredErrors = mutableListOf<LintError>()
 
     val ruleSets = try {
-        KtlintRules.find(config.externalJarPaths, config.useExperimental, false)
+        KtlintRules.rulesets(config.externalJarPaths, config.useExperimental)
     } catch (err: Throwable) {
         KtlintNotifier.notifyErrorWithSettings(file.project, "Error in ruleset", err.toString())
         return emptyLintResult()
     }
 
+    val ruleProviders = ruleSets.values.flatten().toSet()
+
     val params = KtLint.ExperimentalParams(
         fileName = fileName,
         text = file.text,
-        ruleSets = ruleSets,
+        ruleProviders = ruleProviders,
         editorConfigOverride = editorConfigOverride,
         script = !fileName.endsWith(".kt", ignoreCase = true),
         editorConfigPath = config.editorConfigPath,
@@ -74,7 +77,7 @@ internal fun doLint(
             } else {
                 ignoredErrors.add(lintError)
             }
-        },
+        }
     )
 
     // Clear editorconfig cache. (ideally, we could do this if .editorconfig files were changed)
@@ -84,7 +87,9 @@ internal fun doLint(
         if (format) {
             val results = KtLintWrapper.format(params)
             WriteCommandAction.runWriteCommandAction(
-                file.project, "Format with ktlint", null,
+                file.project,
+                "Format with ktlint",
+                null,
                 {
                     file.viewProvider.document?.apply {
                         PsiDocumentManager
@@ -109,7 +114,7 @@ internal fun doLint(
 data class LintResult(
     val correctedErrors: List<LintError>,
     val uncorrectedErrors: List<LintError>,
-    val ignoredErrors: List<LintError>,
+    val ignoredErrors: List<LintError>
 )
 
 fun emptyLintResult() = LintResult(emptyList(), emptyList(), emptyList())
